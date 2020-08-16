@@ -1,6 +1,6 @@
 """"""
 """
-@authors: Deepak Ravikumar Tatachar, Sangamesh Kodge
+@authors: Sangamesh Kodge
 @copyright: Nanoelectronics Research Laboratory
 """
 """"""
@@ -9,36 +9,22 @@ from advtrain.load_dataset import load_dataset
 import matplotlib.pyplot as plt
 from advtrain.attack_framework.multi_lib_attacks import attack_wrapper
 from advtrain.utils.preprocess import preprocess as PreProcess
+from advtrain.framework import Framework
 import os
 
 
-class Framework():
+class Blackbox_extention():
     def __init__(self,
+                 framework,
                  net=None,
                  model_name=None,
                  dataset='cifar10',
                  normalize=None,
                  preprocess=None,
                  epochs=350,
-                 train_batch_size=128,
-                 test_batch_size=128,
-                 val_split=0.0,
-                 augment=True,
-                 padding_crop=4,
-                 shuffle=True,
-                 random_seed=None,
                  optimizer='sgd',
                  loss='crossentropy',
                  learning_rate=0.01,
-                 adversarial_training=False,
-                 lib = 'custom',
-                 attack='PGD',
-                 iterations=40,
-                 epsilon=0.031,
-                 stepsize=0.01,
-                 use_bpda=True,
-                 target=None,
-                 random=False,
                  device=None):
         """This is a framework to train and evaluate a network, when training it uses mean and std normalization
         
@@ -69,23 +55,19 @@ class Framework():
             Returns an object of the framework
         """   
         self.net = net
-        self.dataset = dataset.lower()
+        self.dataset = framework.dataset.lower()
         self.normalize = normalize
-        self.train_batch_size = train_batch_size
-        self.test_batch_size = test_batch_size
-        self.val_split = val_split
-        self.augment = augment
-        self.padding_crop = padding_crop
-        self.shuffle = shuffle
-        self.random_seed = random_seed
+        self.train_batch_size = framework.train_batch_size
+        self.test_batch_size = framework.test_batch_size
+        self.val_split = framework.val_split
+        self.framework = framework
         self.num_epochs = epochs
         self.model_name = model_name
         self.optimizer_name = optimizer
         self.learning_rate = learning_rate
-        self.adversarial_training = adversarial_training
         
         if(device is None):
-            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            self.device = framework.device
         else:
             self.device = device
 
@@ -97,15 +79,7 @@ class Framework():
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer,milestones=range(0,500,100),gamma=0.1)
         
         self.criterion = self.get_criterion_for_loss_function(loss)
-        self.dataset_info = load_dataset(dataset = self.dataset,
-                                         train_batch_size=self.train_batch_size,
-                                         test_batch_size=self.test_batch_size, 
-                                         val_split=self.val_split, 
-                                         augment=self.augment, 
-                                         padding_crop=self.padding_crop,
-                                         shuffle=self.shuffle,
-                                         random_seed=None,
-                                         device=self.device)
+        self.dataset_info = framework.dataset_info
 
         self.train_loader = self.dataset_info.train_loader
         self.val_loader = self.dataset_info.validation_loader
@@ -126,38 +100,18 @@ class Framework():
             self.preprocess =PreProcess()
         else:
             self.preprocess =preprocess
-
-        self.target=target
-        if self.adversarial_training :
-            if self.target==None:
-                self.targeted=False
-            else:
-                self.targeted=True
-
-            self.attack_params = {  'lib': lib,
-                                    'attack': attack,
-                                    'iterations': iterations,
-                                    'epsilon': epsilon,
-                                    'stepsize': stepsize,
-                                    'bpda': use_bpda,
-                                    'preprocess': self.preprocess,
-                                    'custom_norm_func': self.normalize,
-                                    'targeted': self.targeted,
-                                    'random': random }
-
-            self.dataset_params =  { 'mean': self.dataset_info.mean,
-                                    'std': self.dataset_info.std,
-                                    'num_classes': self.dataset_info.num_classes}
-
-            self.attack_info = {'attack_params': self.attack_params,
-                    'dataset_params': self.dataset_params}
-            self.attack = attack_wrapper(self.net, self.device, **self.attack_info)
-            iterations = iterations
-            self.model_name += '_adv'
+        
 
         os.makedirs('./pretrained/', exist_ok=True)
         os.makedirs('./pretrained/'+self.dataset+'/', exist_ok=True)
         os.makedirs('./pretrained/'+self.dataset+'/temp/', exist_ok=True)
+
+        if self.framework.adversarial_training:
+            self.attack_info = self.framework.attack_info
+            self.attack = attack_wrapper(self.net, self.device, **self.attack_info)
+            self.targeted = self.framework.targeted
+            self.target = self.framework.target
+
         
         # Training parameters exposed for hooks to access them
         self.best_val_accuracy = 0.0
@@ -269,8 +223,8 @@ class Framework():
             perturbed_data, un_norm_perturbed_data = self.attack.generate_adversary(data, labels, adv_train_model = self.net, targeted=self.targeted, target_class=self.target )
             L2 += torch.sum(torch.norm(data - un_norm_perturbed_data, p=2, dim=(1,2,3)))
             Linf += torch.sum(torch.norm(data - un_norm_perturbed_data, p=float('inf'), dim=(1,2,3)))
-            data = self.preprocess(perturbed_data).to(self.device)
-            out = self.net(data)
+            data = self.framework.preprocess(self.framework.normalize(un_norm_perturbed_data)).to(self.device)
+            out = self.framework.net(data)
             _, pred = torch.max(out, dim=1)
             sorted_output =  torch.nn.functional.softmax(out, dim=1).sort(dim=1)[0]
             confidence = sorted_output[:,self.num_classes-1] - sorted_output[:,self.num_classes-2]
@@ -360,10 +314,11 @@ class Framework():
                 labels = labels.to(self.device)
                 self.current_batch_data['data'] = data
                 self.current_batch_data['labels'] = labels
-                # Generate adversarial image
-                data = self.preprocess(self.normalize(data))
-                out = self.net(data)
-                loss = self.criterion(out, labels)
+
+                out = self.net(self.preprocess(self.normalize(data)))
+                target = self.framework.net( self.framework.preprocess(self.framework.normalize(data)) )
+                loss = self.criterion(out,target)
+
                 running_loss += loss.item()
                 batches += 1
             
@@ -394,7 +349,7 @@ class Framework():
         self.net = self.net.to(self.device)
         self.net.train()
         if resume_training:
-            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp')
+            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp_tfr')
             start_epoch =  saved_training_state['epoch']
             self.optimizer.load_state_dict(saved_training_state['optimizer'])
             self.net.load_state_dict(saved_training_state['model'])
@@ -436,18 +391,12 @@ class Framework():
                             plt.imshow(data[index].cpu().numpy().transpose(1,2,0))
                         plt.show()
                         plt.close()
-
-                # Generate adversarial image
-                if self.adversarial_training:
-                    perturbed_data, un_norm_perturbed_data = self.attack.generate_adversary(data, labels, adv_train_model = self.net, targeted=self.targeted, target_class=self.target )
-                    data = self.preprocess(perturbed_data).to(self.device)
-                else:
-                    data = self.preprocess(self.normalize(data))
                 
                 # Clears gradients of all the parameter tensors
                 self.optimizer.zero_grad()
-                out = self.net(data)
-                loss = self.criterion(out, labels)
+                out = self.net(self.preprocess(self.normalize(data)))
+                target = self.framework.net( self.framework.preprocess(self.framework.normalize(data)) )
+                loss = self.criterion(out,target)
                 loss.backward()
                 self.optimizer.step()
 
@@ -497,14 +446,14 @@ class Framework():
                                             'best_val_accuracy' : self.best_val_accuracy,
                                             'best_val_loss'     : self.best_val_loss
                                         }
-            torch.save(saved_training_state, './pretrained/' + self.dataset + '/temp/' + self.model_name + '.temp')
+            torch.save(saved_training_state, './pretrained/' + self.dataset + '/temp/' + self.model_name + '.temp_tfr')
             
             if save_ckpt:
                 self.saves.append(self.current_epoch)
                 if parallel:
-                    torch.save(self.net.module.state_dict(), './pretrained/'+ self.dataset +'/' + self.model_name  + '.ckpt')
+                    torch.save(self.net.module.state_dict(), './pretrained/'+ self.dataset +'/' + self.model_name  + '.ckpt_tfr')
                 else:
-                    torch.save(self.net.state_dict(), './pretrained/'+  self.dataset +'/' + self.model_name + '.ckpt')
+                    torch.save(self.net.state_dict(), './pretrained/'+  self.dataset +'/' + self.model_name + '.ckpt_tfr')
 
 
                 test_correct, test_total, test_accuracy = self.test()
@@ -515,5 +464,5 @@ class Framework():
 
         if(self.num_epochs > 0):
             # Load the most optimum weights found during training
-            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp')
+            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp_tfr')
             self.net.load_state_dict(saved_training_state['model'])
