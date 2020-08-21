@@ -515,5 +515,5 @@ class Framework():
 
         if(self.num_epochs > 0):
             # Load the most optimum weights found during training
-            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp')
-            self.net.load_state_dict(saved_training_state['model'])
+            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/' + self.model_name  + '.ckpt')
+            self.net.load_state_dict(saved_training_state)
