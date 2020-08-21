@@ -23,6 +23,7 @@ parser = argparse.ArgumentParser(description='Train', formatter_class=argparse.A
 parser.add_argument('--epochs',                 default=100,                type=int,       help='Set number of epochs')
 parser.add_argument('--dataset',                default='CIFAR10',          type=str,       help='Set dataset to use')
 parser.add_argument('--parallel',               default=False,              type=str2bool,  help='Device in  parallel')
+parser.add_argument('--gpu_id',               default='0,1,2,3',              type=str,  help='Device in  parallel')
 parser.add_argument('--lr',                     default=0.01,               type=float,     help='Learning Rate')
 parser.add_argument('--test_accuracy_display',  default=10,                 type=int,       help='Intervals to display test accuracy')
 parser.add_argument('--optimizer',              default='SGD',              type=str,       help='Optimizer for training')
