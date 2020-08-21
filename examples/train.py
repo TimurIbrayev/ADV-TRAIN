@@ -14,6 +14,10 @@ from advtrain.instantiate_model import instantiate_model
 from advtrain.utils.str2bool import str2bool
 import argparse
 
+####Terminal command for tensorboard(run in remote)
+# tensorboard --logdir=./pretrained/imagenet/runs/<model_name> port=6006
+####If running remotely use(run on local)
+# ssh -NfL localhost:16006:localhost:6006 <username>@<remoteserver>
 parser = argparse.ArgumentParser(description='Train', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #training parameters
 parser.add_argument('--epochs',                 default=100,                type=int,       help='Set number of epochs')
