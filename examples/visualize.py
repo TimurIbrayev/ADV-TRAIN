@@ -82,7 +82,8 @@ net, model_name, Q = instantiate_model(dataset=args.dataset,
                                     suffix=args.suffix, 
                                     load=args.pretrained,
                                     torch_weights=args.torch_weights,
-                                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+                                    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                                    normalize= args.normalize)
 
 
 framework = Framework(net=net,

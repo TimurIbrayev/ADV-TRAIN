@@ -56,7 +56,10 @@ class Blackbox_extention():
         """   
         self.net = net
         self.dataset = framework.dataset.lower()
-        self.normalize = normalize
+        if(self.normalize is None):
+            self.normalize = PreProcess
+        else:    
+            self.normalize = self.dataset_info.normalization
         self.train_batch_size = framework.train_batch_size
         self.test_batch_size = framework.test_batch_size
         self.val_split = framework.val_split

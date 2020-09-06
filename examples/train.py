@@ -51,6 +51,7 @@ parser.add_argument('--qout',           default=False,      type=str2bool,  help
 parser.add_argument('--qin',            default=False,      type=str2bool,  help='Input layer weight quantisation')
 parser.add_argument('--abit',           default=32,         type=int,       help='activation quantisation precision')
 parser.add_argument('--wbit',           default=32,         type=int,       help='Weight quantisation precision')
+parser.add_argument('--normalize',           default=None,         type=int,       help='Normalise the data if not none')
 
 # Attack parameters
 parser.add_argument('--adv_trn',    default=False,      type=str2bool,  help='adv Training')
@@ -119,7 +120,8 @@ net, model_name, Q = instantiate_model(dataset=args.dataset,
                                     qout=args.qout,
                                     suffix=args.suffix, 
                                     load=args.pretrained,
-                                    torch_weights=args.torch_weights)
+                                    torch_weights=args.torch_weights,
+                                    normalize= args.normalize)
 
 # default `log_dir` is "runs" - we'll be more specific here
 writer = SummaryWriter('./pretrained/'+args.dataset.lower()+'/runs/'+model_name)
@@ -148,7 +150,8 @@ framework = Framework(net=net,
                       use_bpda=args.use_bpda,
                       target=args.targeted,
                       random=args.random,
-                      device=None)
+                      device=None,
+                      normalize= args.normalize)
 
 framework.train(epoch_hook=epoch_hook,
               resume_training=args.resume,

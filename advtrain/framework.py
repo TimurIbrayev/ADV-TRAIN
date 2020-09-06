@@ -116,6 +116,8 @@ class Framework():
         self.test_len = len(self.test_loader)
 
         if(self.normalize is None):
+            self.normalize = PreProcess
+        else:    
             self.normalize = self.dataset_info.normalization
         self.num_channels = self.dataset_info.image_channels
 
@@ -515,5 +517,5 @@ class Framework():
 
         if(self.num_epochs > 0):
             # Load the most optimum weights found during training
-            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/' + self.model_name  + '.ckpt')
-            self.net.load_state_dict(saved_training_state)
+            saved_training_state = torch.load('./pretrained/'+ self.dataset +'/temp/' + self.model_name  + '.temp')
+            self.net.load_state_dict(saved_training_state['model'])
