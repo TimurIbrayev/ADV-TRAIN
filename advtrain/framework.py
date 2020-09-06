@@ -116,9 +116,10 @@ class Framework():
         self.test_len = len(self.test_loader)
 
         if(self.normalize is None):
-            self.normalize = PreProcess
+            self.normalize = PreProcess()
         else:    
             self.normalize = self.dataset_info.normalization
+            
         self.num_channels = self.dataset_info.image_channels
 
         self.num_classes = self.dataset_info.num_classes

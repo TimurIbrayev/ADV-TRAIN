@@ -56,10 +56,6 @@ class Blackbox_extention():
         """   
         self.net = net
         self.dataset = framework.dataset.lower()
-        if(self.normalize is None):
-            self.normalize = PreProcess
-        else:    
-            self.normalize = self.dataset_info.normalization
         self.train_batch_size = framework.train_batch_size
         self.test_batch_size = framework.test_batch_size
         self.val_split = framework.val_split
@@ -68,7 +64,14 @@ class Blackbox_extention():
         self.model_name = model_name
         self.optimizer_name = optimizer
         self.learning_rate = learning_rate
-        
+
+        if(self.normalize is None):
+            self.normalize = PreProcess()
+        elif(self.normalize==1):
+            self.normalize = self.framework.dataset_info.normalization
+        else:    
+            self.normalize = self.framework.normalize
+
         if(device is None):
             self.device = framework.device
         else:

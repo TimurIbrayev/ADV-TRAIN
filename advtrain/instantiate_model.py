@@ -41,7 +41,7 @@ def instantiate_model (dataset='cifar10',
         model           : models with desired weight (pretrained / random )
         model_name      : str 'dataset_arch_suffix.ckpt' used to save/load model in ./pretrained/dataset
     """
-    if normalize = None:
+    if normalize is None:
         un_normalize =True
     else:
         un_normalize = False
