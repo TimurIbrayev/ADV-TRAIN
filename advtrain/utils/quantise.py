@@ -9,7 +9,7 @@ import torch.nn as nn
 
 class Quantise2d(nn.Module):
 
-    def __init__(self, n_bits=1, quantise=True, un_normalized=False):
+    def __init__(self, n_bits=1, quantise=True, un_normalized=False, device= 'cpu'):
         """This is a class that quantizes the input 
         
         Args:
@@ -25,7 +25,7 @@ class Quantise2d(nn.Module):
         self.n_bits = n_bits
         self.quantise=quantise
         self.un_normalized=un_normalized
-        
+        self.device = device
     
     def forward(self, data):
         """This is a function that quantizes the input 

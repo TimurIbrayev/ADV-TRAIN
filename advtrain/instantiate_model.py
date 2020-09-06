@@ -26,7 +26,7 @@ def instantiate_model (dataset='cifar10',
                        suffix='', 
                        load=False,
                        torch_weights=False,
-                       device='cpu',
+                       device=None,
                        normalize = None):
     """Initializes/load network with random weight/saved and return auto generated model name 'dataset_arch_suffix.ckpt'
     
@@ -45,22 +45,28 @@ def instantiate_model (dataset='cifar10',
         un_normalize =True
     else:
         un_normalize = False
+    
+    if(device is None):
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    else:
+        self.device = device
+
     #Select the input transformation
     if input_quant==None:
         input_quant=''
         Q=PreProcess()
     elif input_quant.lower()=='q1':
-        Q = Quantise2d(n_bits=1, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=1, un_normalized=un_normalize).to(self.device)
     elif input_quant.lower()=='q2':
-        Q = Quantise2d(n_bits=2, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=2, un_normalized=un_normalize).to(self.device)
     elif input_quant.lower()=='q4':
-        Q = Quantise2d(n_bits=4, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=4, un_normalized=un_normalize).to(self.device)
     elif input_quant.lower()=='q6':
-        Q = Quantise2d(n_bits=6, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=6, un_normalized=un_normalize).to(self.device)
     elif input_quant.lower()=='q8':
-        Q = Quantise2d(n_bits=8, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=8, un_normalized=un_normalize).to(self.device)
     elif input_quant.lower()=='fp':
-        Q = Quantise2d(n_bits=1,quantise=False, un_normalized=un_normalize).to(device)
+        Q = Quantise2d(n_bits=1,quantise=False, un_normalized=un_normalize).to(self.device)
     else:    
         raise ValueError
 
