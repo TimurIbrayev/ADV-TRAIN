@@ -119,7 +119,7 @@ class Framework():
             self.normalize = PreProcess()
         else:    
             self.normalize = self.dataset_info.normalization
-            
+
         self.num_channels = self.dataset_info.image_channels
 
         self.num_classes = self.dataset_info.num_classes
@@ -167,6 +167,10 @@ class Framework():
         self.best_val_loss = 0.0
         self.current_train_loss = 0.0
         self.current_train_acc = 0.0
+        self.current_val_acc = 0.0
+        self.current_val_loss = 0.0
+        self.no_of_batches_train = len(self.train_loader)
+        
         self.current_epoch = 0
         self.current_batch = 0
         self.saves = []
@@ -375,6 +379,8 @@ class Framework():
                 total += labels.size()[0]
             accuracy = float(correct) * 100.0 / float(total)
             average_loss = running_loss / batches
+            self.current_val_acc = accuracy
+            self.current_val_loss =average_loss
         return correct, total, accuracy, average_loss
 
     def train(self,

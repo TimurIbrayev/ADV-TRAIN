@@ -47,26 +47,26 @@ def instantiate_model (dataset='cifar10',
         un_normalize = False
     
     if(device is None):
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     else:
-        self.device = device
+        device = device
 
     #Select the input transformation
     if input_quant==None:
         input_quant=''
         Q=PreProcess()
     elif input_quant.lower()=='q1':
-        Q = Quantise2d(n_bits=1, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=1, un_normalized=un_normalize, device=device).to(device)
     elif input_quant.lower()=='q2':
-        Q = Quantise2d(n_bits=2, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=2, un_normalized=un_normalize, device=device).to(device)
     elif input_quant.lower()=='q4':
-        Q = Quantise2d(n_bits=4, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=4, un_normalized=un_normalize, device=device).to(device)
     elif input_quant.lower()=='q6':
-        Q = Quantise2d(n_bits=6, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=6, un_normalized=un_normalize, device=device).to(device)
     elif input_quant.lower()=='q8':
-        Q = Quantise2d(n_bits=8, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=8, un_normalized=un_normalize, device=device).to(device)
     elif input_quant.lower()=='fp':
-        Q = Quantise2d(n_bits=1,quantise=False, un_normalized=un_normalize).to(self.device)
+        Q = Quantise2d(n_bits=1,quantise=False, un_normalized=un_normalize, device=device).to(device)
     else:    
         raise ValueError
 
