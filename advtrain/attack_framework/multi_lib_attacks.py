@@ -162,6 +162,15 @@ class attack_wrapper():
                     'epsilon': epsilon,
                     'model': attack_model,
                     'num_classes': num_classes }
+        elif (attack_name == 'fgsm'):
+            epsilon = attack_params['epsilon']
+            attack = advertorch.attacks.FGSM
+            # Return attack dictionary
+            return {'attack': attack, 
+                    'iterations': 1,
+                    'epsilon': epsilon,
+                    'model': attack_model,
+                    'num_classes': num_classes }
 
         else:    
             # Right way to handle exception in python see https://stackoverflow.com/questions/2052390/manually-raising-throwing-an-exception-in-python
@@ -293,6 +302,11 @@ class attack_wrapper():
                                    eps_iter=self.attack_info['stepsize'],
                                    nb_iter=self.attack_info['iterations'],
                                    rand_init=True,
+                                   targeted=self.targeted)
+            elif(self.attack_params['attack'].lower() == 'fgsm'):
+                adversary = attack(self.attack_info['model'], 
+                                   loss_fn = nn.CrossEntropyLoss(reduction="mean"),
+                                   eps=self.attack_info['epsilon'],
                                    targeted=self.targeted)
             elif(self.attack_params['attack'].lower() == 'cw'):
                     adversary = attack(self.attack_info['model'],
