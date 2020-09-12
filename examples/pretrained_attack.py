@@ -46,6 +46,7 @@ parser.add_argument('--qout',           default=False,      type=str2bool,  help
 parser.add_argument('--qin',            default=False,      type=str2bool,  help='Input layer weight quantisation')
 parser.add_argument('--abit',           default=32,         type=int,       help='activation quantisation precision')
 parser.add_argument('--wbit',           default=32,         type=int,       help='Weight quantisation precision')
+parser.add_argument('--normalize',           default=None,         type=int,       help='Normalise the data if not none')
 
 #attack parameters
 parser.add_argument('--attack',     default='PGD',      type=str,       help='Type of attack [PGD, CW]')
@@ -108,7 +109,8 @@ framework = Framework(net=net,
                       use_bpda=args.use_bpda,
                       target=args.targeted,
                       random=args.random,
-                      device=None)
+                      device=None,
+                      normalize= args.normalize)
 
 _ , _, accuracy, L2, Linf = framework.adversarial_attack()
 print('Test Acc: {} \nL2  norm: {} \nLinf norm: {}'.format(accuracy,L2, Linf))

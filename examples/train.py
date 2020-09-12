@@ -8,16 +8,22 @@ import sys
 sys.path.append('../')
 
 import torch
+from torch.utils.tensorboard import SummaryWriter
 from advtrain.framework import Framework
 from advtrain.instantiate_model import instantiate_model
 from advtrain.utils.str2bool import str2bool
 import argparse
 
+####Terminal command for tensorboard(run in remote)
+# tensorboard --logdir=./pretrained/imagenet/runs/<model_name> port=6006
+####If running remotely use(run on local)
+# ssh -NfL localhost:16006:localhost:6006 <username>@<remoteserver>
 parser = argparse.ArgumentParser(description='Train', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 #training parameters
 parser.add_argument('--epochs',                 default=100,                type=int,       help='Set number of epochs')
 parser.add_argument('--dataset',                default='CIFAR10',          type=str,       help='Set dataset to use')
 parser.add_argument('--parallel',               default=False,              type=str2bool,  help='Device in  parallel')
+parser.add_argument('--gpu_id',               default='0,1,2,3',              type=str,  help='Device in  parallel')
 parser.add_argument('--lr',                     default=0.01,               type=float,     help='Learning Rate')
 parser.add_argument('--test_accuracy_display',  default=10,                 type=int,       help='Intervals to display test accuracy')
 parser.add_argument('--optimizer',              default='SGD',              type=str,       help='Optimizer for training')
@@ -45,6 +51,7 @@ parser.add_argument('--qout',           default=False,      type=str2bool,  help
 parser.add_argument('--qin',            default=False,      type=str2bool,  help='Input layer weight quantisation')
 parser.add_argument('--abit',           default=32,         type=int,       help='activation quantisation precision')
 parser.add_argument('--wbit',           default=32,         type=int,       help='Weight quantisation precision')
+parser.add_argument('--normalize',           default=None,         type=int,       help='Normalise the data if not none')
 
 # Attack parameters
 parser.add_argument('--adv_trn',    default=False,      type=str2bool,  help='adv Training')
@@ -60,11 +67,39 @@ parser.add_argument('--stepsize',   default=0.01,       type=float,     help='st
 global args
 args = parser.parse_args()
 print(args)
+if args.parallel:
+    gpu_id = args.gpu_id.split(',')
+    gpu_id = [int(i) for i in gpu_id]
+else:
+    gpu_id=[0,1,2,3]
 
 def epoch_hook(framework):
-    if (framework.current_epoch+1)%args.test_accuracy_display==0:
-        print("\nEpoch {}: \n Train Loss:{} \n Train Accuracy:{} \n Test Accuracy:{} ".format(framework.current_epoch, framework.current_train_loss, framework.current_train_acc, framework.current_test_acc) )
+    if args.dataset.lower() !='imagenet' and  args.dataset.lower() !='tinyimagenet' : 
+        if (framework.current_epoch+1)%args.test_accuracy_display==0:
+            print("\nEpoch {}: \n Train Loss:{} \n Train Accuracy:{} \n Test Accuracy:{} ".format(framework.current_epoch+1, framework.current_train_loss, framework.current_train_acc, framework.current_test_acc) )
+    else:
+        print("Epoch {}: \n Train Loss:{} \n Train Accuracy:{} \n Test Accuracy:{} \n\n".format(framework.current_epoch+1, framework.current_train_loss, framework.current_train_acc, framework.current_test_acc) )
+    
+    writer.add_scalars('Accuracy',
+                    {'train':framework.current_train_acc,
+                    'val'   :framework.current_val_acc,
+                    'test'  :framework.current_test_acc,
+                    },framework.current_epoch)
 
+def batch_hook(framework):
+    if args.dataset.lower() =='imagenet' or  args.dataset.lower() =='tinyimagenet' : 
+        if (framework.current_batch+1)%args.test_accuracy_display==0:
+            print("Epoch{}-Batch{}:  Train Loss:{}  Train Accuracy:{} ".format(framework.current_epoch+1,framework.current_batch+1, framework.current_train_loss, framework.current_train_acc) )
+    else:
+        pass
+    
+    writer.add_scalars('Loss',
+                    {'train':framework.current_train_loss,
+                    'val'   :framework.current_val_loss,
+                    },
+                    framework.current_epoch + framework.current_batch/framework.no_of_batches_train)
+    
+    
 if args.dataset.lower()=='imagenet':
     num_classes=1000
 elif  args.dataset.lower()=='tinyimagenet':
@@ -85,8 +120,11 @@ net, model_name, Q = instantiate_model(dataset=args.dataset,
                                     qout=args.qout,
                                     suffix=args.suffix, 
                                     load=args.pretrained,
-                                    torch_weights=args.torch_weights)
+                                    torch_weights=args.torch_weights,
+                                    normalize= args.normalize)
 
+# default `log_dir` is "runs" - we'll be more specific here
+writer = SummaryWriter('./pretrained/'+args.dataset.lower()+'/runs/'+model_name)
 
 framework = Framework(net=net,
                       model_name=model_name,
@@ -112,10 +150,16 @@ framework = Framework(net=net,
                       use_bpda=args.use_bpda,
                       target=args.targeted,
                       random=args.random,
-                      device=None)
+                      device=None,
+                      normalize= args.normalize)
 
-framework.train(epoch_hook=epoch_hook)
+framework.train(epoch_hook=epoch_hook,
+              resume_training=args.resume,
+              batch_hook=batch_hook, 
+              parallel=args.parallel,
+              parallel_devices_ids=gpu_id)
 
 _ , _, accuracy = framework.test()
 print('Test Acc: {}'.format(accuracy))
 print("Confidence correct : {} \nConfidence incorrect : {} \nConfusion Matrix:\n{}".format(framework.confidence_correct,framework.confidence_incorrect, framework.confusion_matrix))
+writer.close()

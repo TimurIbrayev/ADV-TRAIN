@@ -47,6 +47,7 @@ parser.add_argument('--qout',           default=False,      type=str2bool,  help
 parser.add_argument('--qin',            default=False,      type=str2bool,  help='Input layer weight quantisation')
 parser.add_argument('--abit',           default=32,         type=int,       help='activation quantisation precision')
 parser.add_argument('--wbit',           default=32,         type=int,       help='Weight quantisation precision')
+parser.add_argument('--normalize',           default=None,         type=int,       help='Normalise the data if not none')
 
 # Transfer attack model parameters
 parser.add_argument('--tfr_suffix',         default='_tfr',         type=str,        help='appended to model name')
@@ -59,6 +60,7 @@ parser.add_argument('--tfr_qout',           default=False,      type=str2bool,  
 parser.add_argument('--tfr_qin',            default=False,      type=str2bool,  help='Input layer weight quantisation')
 parser.add_argument('--tfr_abit',           default=32,         type=int,       help='activation quantisation precision')
 parser.add_argument('--tfr_wbit',           default=32,         type=int,       help='Weight quantisation precision')
+parser.add_argument('--tfr_normalize',           default=None,         type=int,       help='Normalise the data if not none')
 
 
 # Attack parameters
@@ -101,7 +103,8 @@ net, model_name, Q = instantiate_model(dataset=args.dataset,
                                     suffix=args.suffix, 
                                     load=args.pretrained,
                                     torch_weights=args.torch_weights,
-                                    device= torch.device('cuda' if torch.cuda.is_available() else 'cpu'))
+                                    device= torch.device('cuda' if torch.cuda.is_available() else 'cpu'),
+                                    normalize= args.normalize)
 
 
 framework = Framework(net=net,
@@ -124,7 +127,8 @@ framework = Framework(net=net,
                       use_bpda=args.use_bpda,
                       target=args.targeted,
                       random=args.random,
-                      device=None)
+                      device=None,
+                      normalize= args.normalize)
 
 
 tfr_net, tfr_model_name, tfr_Q = instantiate_model( dataset=args.dataset,
@@ -139,7 +143,8 @@ tfr_net, tfr_model_name, tfr_Q = instantiate_model( dataset=args.dataset,
                                                     suffix=args.tfr_suffix, 
                                                     load=args.tfr_pretrained,
                                                     torch_weights=args.tfr_torch_weights,
-                                                    device= framework.device)
+                                                    device= framework.device,
+                                                    normalize= args.tfr_normalize)
 
 blackbox_extention = Blackbox_extention(framework = framework,
                                         net=tfr_net,
@@ -149,7 +154,8 @@ blackbox_extention = Blackbox_extention(framework = framework,
 
                                         optimizer=args.optimizer,
                                         loss=args.loss,
-                                        learning_rate=args.lr)
+                                        learning_rate=args.lr,
+                                        normalize= args.tfr_normalize)
 _ , _, accuracy = framework.test()
 print('\nTest Acc of Teacher model: {}'.format(accuracy))
 print("Confidence correct : {} \nConfidence incorrect : {} \nConfusion Matrix:\n{}".format(framework.confidence_correct,framework.confidence_incorrect, framework.confusion_matrix))
