@@ -140,7 +140,6 @@ class load_dataset():
             if self.augment:
                 train_transform = transforms.Compose([
                                                         transforms.RandomCrop(img_dim, padding=self.padding_crop),
-                                                        transforms.RandomHorizontalFlip(),
                                                         transforms.ToTensor(),
                                                     ])
             else:
