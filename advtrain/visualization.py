@@ -1,6 +1,6 @@
 """"""
 """
-@author: Deepak Ravikumar Tatachar 
+@author: Deepak Ravikumar Tatachar, Sangamesh Kodge
 @copyright: Nanoelectronics Research Laboratory
 """
 """"""
@@ -15,7 +15,67 @@ import argparse
 import os
 import copy
 from advtrain.utils.str2bool import str2bool
-from advtrain.utils.str2bool import str2bool
+from sklearn.manifold import TSNE
+import seaborn as sns
+sns.set(rc={'figure.figsize':(11.7,8.27)})
+palette = sns.color_palette("bright", 10)
+
+class tsne():
+    def __init__(self, 
+                 framework):
+        """This is a class to visualize the boundaries of a neural net
+        
+        Args:
+            framework (utils.Framework): Object of Framework, If this is passed none of the other parameters are needed
+            net (nn.Module): network whose decision boundaries are desired
+            num_classes (int): Number of classes in the dataset
+            num_channels (int) : Number of channels in each image of the dataset 
+            img_dim (int): Assumes a square image, the height of the image in the dataset
+            device (str): cpu/cuda device to perform the evaluation on
+        Returns:
+            Returns an object of the VisualizeBoundaries
+        """   
+        self.net = framework.net
+        self.preprocess = framework.preprocess
+        self.normalize = framework.normalize
+        self.num_classes = framework.dataset_info.num_classes
+        self.device = framework.device
+        self.num_channels = framework.dataset_info.image_channels
+        self.img_size = framework.dataset_info.image_dimensions
+        self.test_loader = framework.test_loader
+
+        self.num_features = self.img_size * self.img_size * self.num_channels
+
+
+
+    def data_collection(self):
+        input ={ 'data':[],
+                 'labels':[]}
+
+        for batch_idx, (data, labels) in enumerate(self.test_loader):
+            data  =  data.to(self.device)
+            labels = labels.numpy()
+            out = (self.net(self.preprocess(self.normalize( data )), return_act=True) ).to('cpu').detach().numpy()
+            input['data'].append(out)
+            input['labels'].append(labels)
+
+        input['data'] = np.concatenate(input['data'], axis = 0)
+        input['labels'] = np.concatenate(input['labels'], axis = 0)
+        return input
+
+
+
+    def plot(self):
+        input = self.data_collection()
+        x_emb = TSNE(n_components=2).fit_transform(input['data'])
+
+        legend = ['airplane', 'automobile', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'shift', 'truck']
+        labels = np.take(legend, input['labels'])
+        sns.scatterplot(x_emb[:,0], x_emb[:,1], hue=labels, legend='full', palette=palette)
+        plt.show()
+        return
+
+
 
 class Visualize():
     def __init__(self, 
